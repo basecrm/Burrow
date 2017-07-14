@@ -66,6 +66,7 @@ type PartitionStatus struct {
 	Status    StatusConstant `json:"status"`
 	Start     ConsumerOffset `json:"start"`
 	End       ConsumerOffset `json:"end"`
+	Lag       int64          `json:"lag"`
 }
 
 type ConsumerGroupStatus struct {

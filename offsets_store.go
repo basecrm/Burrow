@@ -316,7 +316,6 @@ func (storage *OffsetStorage) addConsumerOffset(offset *protocol.PartitionOffset
 		offset.Cluster, offset.Topic, offset.Partition, offset.Group, offset.Timestamp, offset.Offset,
 		partitionLag)
 
-
 	// Advance the ring pointer
 	consumerTopicMap[offset.Partition] = consumerTopicMap[offset.Partition].Next()
 	clusterOffsets.consumerLock.Unlock()
@@ -454,6 +453,13 @@ func (storage *OffsetStorage) evaluateGroup(cluster string, group string, result
 				continue
 			}
 
+			// calculate lag at evaluation time
+			lag := clusterMap.broker[topic][partition].Offset - lastOffset.MaxOffset
+			if lag < 0 {
+				// broker offsets are fetched periodically and consumer offset might get ahead of the broker offset
+				lag = 0
+			}
+
 			// We may always add this partition, so create it once
 			thispart := &protocol.PartitionStatus{
 				Topic:     topic,
@@ -461,14 +467,15 @@ func (storage *OffsetStorage) evaluateGroup(cluster string, group string, result
 				Status:    protocol.StatusOK,
 				Start:     firstOffset,
 				End:       lastOffset,
+				Lag:       lag,
 			}
 
 			// Check if this partition is the one with the most lag currently
-			if lastOffset.Lag > maxlag {
+			if lag > maxlag {
 				status.Maxlag = thispart
-				maxlag = lastOffset.Lag
+				maxlag = lag
 			}
-			status.TotalLag += uint64(lastOffset.Lag)
+			status.TotalLag += uint64(lag)
 
 			// Rule 4 - Offsets haven't been committed in a while
 			if ((time.Now().Unix() * 1000) - lastOffset.Timestamp) > (lastOffset.Timestamp - firstOffset.Timestamp) {
@@ -700,14 +707,14 @@ func (storage *OffsetStorage) debugPrintGroup(cluster string, group string) {
 func (storage *OffsetStorage) AcceptConsumerGroup(group string) bool {
 	// First check to make sure group is in the whitelist
 	if (storage.groupWhitelist != nil) && !storage.groupWhitelist.MatchString(group) {
-		return false;
+		return false
 	}
 
 	// The group is in the whitelist (or there is not whitelist).  Now check the blacklist
 	if (storage.groupBlacklist != nil) && storage.groupBlacklist.MatchString(group) {
-		return false;
+		return false
 	}
 
 	// good to go
-	return true;
+	return true
 }
