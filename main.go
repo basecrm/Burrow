@@ -14,6 +14,7 @@ import (
 	"flag"
 	"fmt"
 	log "github.com/cihub/seelog"
+	"github.com/mailgun/metrics"
 	"github.com/samuel/go-zookeeper/zk"
 	"os"
 	"os/signal"
@@ -39,6 +40,7 @@ type ApplicationContext struct {
 	Server       *HttpServer
 	NotifyCenter *NotifyCenter
 	NotifierLock *zk.Lock
+	Metrics      metrics.Client
 }
 
 // Why two mains? Golang doesn't let main() return, which means defers will not run.
@@ -132,6 +134,29 @@ func burrowMain() int {
 		defer stormClient.Stop()
 
 		appContext.Storms[cluster] = &StormCluster{Storm: stormClient}
+	}
+
+	// Set up Statsd metrics
+	if appContext.Config.Statsd.Enable {
+		address := fmt.Sprintf("%s:%d", appContext.Config.Statsd.Host, appContext.Config.Statsd.Port)
+		statsd, err := metrics.NewWithOptions(address, appContext.Config.Statsd.Prefix, metrics.Options{UseBuffering: true})
+		if err != nil {
+			log.Criticalf("Cannot start Statsd client for %s: %v", address, err)
+			return 1
+		}
+		defer statsd.Close()
+
+		// report runtime metrics
+		go func() {
+			for {
+				if err := statsd.ReportRuntimeMetrics("sys", 1); err != nil {
+					log.Errorf("Failed to report runtime metrics to stasd: %v", err)
+				}
+				time.Sleep(1000 * time.Millisecond)
+			}
+		}()
+
+		appContext.Metrics = statsd
 	}
 
 	// Set up the Zookeeper lock for notification

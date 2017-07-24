@@ -28,9 +28,9 @@ type ClientProfile struct {
 	ClientID        string `gcfg:"client-id"`
 	TLS             bool   `gcfg:"tls"`
 	TLSNoVerify     bool   `gcfg:"tls-noverify"`
-	TLSCertFilePath string  `gcfg:"tls-certfilepath"`
-	TLSKeyFilePath  string  `gcfg:"tls-keyfilepath"`
-	TLSCAFilePath   string  `gcfg:"tls-cafilepath"`
+	TLSCertFilePath string `gcfg:"tls-certfilepath"`
+	TLSKeyFilePath  string `gcfg:"tls-keyfilepath"`
+	TLSCAFilePath   string `gcfg:"tls-cafilepath"`
 }
 type BurrowConfig struct {
 	General struct {
@@ -76,8 +76,8 @@ type BurrowConfig struct {
 		StormGroupRefresh int64 `gcfg:"storm-group-refresh"`
 	}
 	Httpserver struct {
-		Enable bool `gcfg:"server"`
-		Port   int  `gcfg:"port"`
+		Enable bool     `gcfg:"server"`
+		Port   int      `gcfg:"port"`
 		Listen []string `gcfg:"listen"`
 	}
 	Notify struct {
@@ -99,20 +99,20 @@ type BurrowConfig struct {
 		Threshold int      `gcfg:"threshold"`
 	}
 	Httpnotifier struct {
-		Enable         bool     `gcfg:"enable"`
-		Groups         []string `gcfg:"group"`
-		UrlOpen        string   `gcfg:"url"`
-		UrlClose       string   `gcfg:"url-delete"`
-		MethodOpen     string   `gcfg:"method"`
-		MethodClose    string   `gcfg:"method-delete"`
-		Interval       int64    `gcfg:"interval"`
-		Extras         []string `gcfg:"extra"`
-		TemplateOpen   string   `gcfg:"template-post"`
-		TemplateClose  string   `gcfg:"template-delete"`
-		SendClose      bool     `gcfg:"send-delete"`
-		PostThreshold  int      `gcfg:"post-threshold"`
-		Timeout        int      `gcfg:"timeout"`
-		Keepalive      int      `gcfg:"keepalive"`
+		Enable        bool     `gcfg:"enable"`
+		Groups        []string `gcfg:"group"`
+		UrlOpen       string   `gcfg:"url"`
+		UrlClose      string   `gcfg:"url-delete"`
+		MethodOpen    string   `gcfg:"method"`
+		MethodClose   string   `gcfg:"method-delete"`
+		Interval      int64    `gcfg:"interval"`
+		Extras        []string `gcfg:"extra"`
+		TemplateOpen  string   `gcfg:"template-post"`
+		TemplateClose string   `gcfg:"template-delete"`
+		SendClose     bool     `gcfg:"send-delete"`
+		PostThreshold int      `gcfg:"post-threshold"`
+		Timeout       int      `gcfg:"timeout"`
+		Keepalive     int      `gcfg:"keepalive"`
 	}
 	Slacknotifier struct {
 		Enable    bool     `gcfg:"enable"`
@@ -127,6 +127,14 @@ type BurrowConfig struct {
 		Timeout   int      `gcfg:"timeout"`
 		Keepalive int      `gcfg:"keepalive"`
 	}
+	Statsd struct {
+		Enable       bool   `gcfg:"enable"`
+		Host         string `gcfg:"host"`
+		Port         int    `gcfg:"port"`
+		Prefix       string `gcfg:"prefix"`
+		LagThreshold int64  `gcfg:"lag-threshold"`
+	}
+
 	Clientprofile map[string]*ClientProfile
 }
 
@@ -476,6 +484,19 @@ func ValidateConfig(app *ApplicationContext) error {
 		}
 		if app.Config.Slacknotifier.IconEmoji == "" {
 			app.Config.Slacknotifier.IconEmoji = ":ghost:"
+		}
+	}
+
+	// Statsd Config
+	if app.Config.Statsd.Enable {
+		if app.Config.Statsd.Host == "" {
+			app.Config.Statsd.Host = "127.0.0.1"
+		} else if !validateHostname(app.Config.Statsd.Host) {
+			errs = append(errs, "Statsd host is invalid")
+		}
+
+		if app.Config.Statsd.Port == 0 {
+			app.Config.Statsd.Port = 8125
 		}
 	}
 

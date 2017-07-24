@@ -54,6 +54,12 @@ func LoadNotifiers(app *ApplicationContext) error {
 		}
 	}
 
+	if app.Config.Statsd.Enable {
+		if statsdReporter, err := NewStatsdReporter(app); err == nil {
+			notifiers = append(notifiers, statsdReporter)
+		}
+	}
+
 	nc := &NotifyCenter{
 		app:            app,
 		notifiers:      notifiers,
@@ -174,7 +180,7 @@ func (nc *NotifyCenter) startConsumerGroupEvaluator(group string, cluster string
 		nc.groupLock.RUnlock()
 
 		// Send requests for group status - responses are handled by the main loop (for now)
-		storageRequest := &RequestConsumerStatus{Result: nc.resultsChannel, Cluster: cluster, Group: group}
+		storageRequest := &RequestConsumerStatus{Result: nc.resultsChannel, Cluster: cluster, Group: group, Showall: true}
 		nc.app.Storage.requestChannel <- storageRequest
 
 		// Sleep for the check interval
@@ -228,9 +234,9 @@ func NewHttpNotifier(app *ApplicationContext) (*notifier.HttpNotifier, error) {
 			Method:       httpConfig.MethodClose,
 			TemplateFile: httpConfig.TemplateClose,
 		},
-		Threshold:          httpConfig.PostThreshold,
-		SendClose:          httpConfig.SendClose,
-		Extras:             extras,
+		Threshold: httpConfig.PostThreshold,
+		SendClose: httpConfig.SendClose,
+		Extras:    extras,
 		HttpClient: &http.Client{
 			Timeout: time.Duration(httpConfig.Timeout) * time.Second,
 			Transport: &http.Transport{
@@ -263,5 +269,14 @@ func NewSlackNotifier(app *ApplicationContext) (*notifier.SlackNotifier, error) 
 				Proxy: http.ProxyFromEnvironment,
 			},
 		},
+	}, nil
+}
+
+func NewStatsdReporter(app *ApplicationContext) (*notifier.StatsdReporter, error) {
+	log.Info("Start Stasd Lag Reporter")
+
+	return &notifier.StatsdReporter{
+		Client:       app.Metrics,
+		LagThreshold: app.Config.Statsd.LagThreshold,
 	}, nil
 }
