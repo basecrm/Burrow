@@ -32,7 +32,6 @@ type EmailNotifier struct {
 	Groups       []string
 	auth         smtp.Auth
 	template     *template.Template
-	groupMsgs    map[string]Message
 }
 
 func (emailer *EmailNotifier) NotifierName() string {
@@ -62,19 +61,14 @@ func (emailer *EmailNotifier) Notify(msg Message) error {
 		emailer.template = template
 	}
 
-	if emailer.groupMsgs == nil {
-		emailer.groupMsgs = make(map[string]Message)
-	}
+	clusterGroup := fmt.Sprintf("%s,%s", msg.Cluster, msg.Group)
 
 	for _, group := range emailer.Groups {
-		clusterGroup := fmt.Sprintf("%s,%s", msg.Cluster, msg.Group)
-		if clusterGroup == group {
-			emailer.groupMsgs[clusterGroup] = msg
+		if group == clusterGroup {
+			return emailer.sendConsumerGroupStatusNotify(msg)
 		}
 	}
-	if len(emailer.Groups) == len(emailer.groupMsgs) {
-		return emailer.sendConsumerGroupStatusNotify()
-	}
+
 	return nil
 }
 
@@ -82,26 +76,18 @@ func (emailer *EmailNotifier) Ignore(msg Message) bool {
 	return int(msg.Status) < emailer.Threshold
 }
 
-func (emailer *EmailNotifier) sendConsumerGroupStatusNotify() error {
+func (emailer *EmailNotifier) sendConsumerGroupStatusNotify(msg Message) error {
 	var bytesToSend bytes.Buffer
 	log.Debug("send email")
 
-	msgs := make([]Message, len(emailer.Groups))
-	i := 0
-	for group, msg := range emailer.groupMsgs {
-		msgs[i] = msg
-		delete(emailer.groupMsgs, group)
-		i++
-	}
-
 	err := emailer.template.Execute(&bytesToSend, struct {
-		From    string
-		To      string
-		Results []Message
+		From   string
+		To     string
+		Result Message
 	}{
-		From:    emailer.From,
-		To:      emailer.To,
-		Results: msgs,
+		From:   emailer.From,
+		To:     emailer.To,
+		Result: msg,
 	})
 	if err != nil {
 		log.Error("Failed to assemble email:", err)
