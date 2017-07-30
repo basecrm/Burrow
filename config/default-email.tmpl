@@ -6,7 +6,9 @@ Subject: [Burrow] Kafka Consumer Lag Alert
 Group:    {{.Result.Group}}
 Status:   {{.Result.Status}}
 Time:     {{now.Format "2006-01-02 15:04:05 MST"}}
-Errors:   {{len .Result.Partitions}} partitions reported
-{{range .Result.Partitions}}          {{.Status}} {{.Topic}}:{{.Partition}} lag:{{.Lag}} ({{(time .Start.Timestamp).Format "2006-01-02 15:04:05 MST"}}, offset:{{.Start.Offset}}, lag:{{.Start.Lag}}) -> ({{(time .End.Timestamp).Format "2006-01-02 15:04:05 MST"}}, offset:{{.End.Offset}}, lag:{{.End.Lag}})
+
+{{len .Result.Partitions}} partitions reported:
+
+{{range .Result.Partitions}}{{.Status}} {{.Topic}}:{{.Partition}} lag:{{.Lag}} ({{(time .Start.Timestamp).Format "2006-01-02 15:04:05 MST"}}, offset:{{.Start.Offset}}, lag:{{.Start.Lag}}) -> ({{(time .End.Timestamp).Format "2006-01-02 15:04:05 MST"}}, offset:{{.End.Offset}}, lag:{{.End.Lag}})
 {{end}}{{end}}
 
