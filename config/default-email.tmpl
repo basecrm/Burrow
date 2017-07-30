@@ -7,6 +7,7 @@ The Kafka consumer groups you are monitoring are currently showing problems. The
 {{if or (ne 0 .Result.Status) (ne 5 .Result.Status)}}Cluster:  {{.Result.Cluster}}
 Group:    {{.Result.Group}}
 Status:   {{if eq 1 .Result.Status}}WARNING{{else if eq 2 .Result.Status}}ERROR{{end}}
+Time:     {{now}}
 Complete: {{.Result.Complete}}
 Errors:   {{len .Result.Partitions}} partitions have problems
 {{range .Result.Partitions}}          {{if eq 1 .Status}} WARN{{else if eq 2 .Status}}  ERR{{else if eq 3 .Status}} STOP{{else if eq 4 .Status}}STALL{{end}} {{.Topic}}:{{.Partition}} ({{time .Start.Timestamp}}, {{.Start.Offset}}, {{.Start.Lag}}) -> ({{time .End.Timestamp}}, {{.End.Offset}}, {{.End.Lag}})

@@ -58,6 +58,7 @@ func (emailer *EmailNotifier) Notify(msg Message) error {
 			"time": func(millis int64) time.Time {
 				return time.Unix(0, millis*int64(time.Millisecond))
 			},
+			"now": time.Now,
 		}
 		template, err := template.New("").Funcs(funcMap).ParseFiles(emailer.TemplateFile)
 		if err != nil {
