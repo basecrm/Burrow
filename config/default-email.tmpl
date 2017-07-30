@@ -2,14 +2,11 @@ From: {{.From}}
 To: {{.To}}
 Subject: [Burrow] Kafka Consumer Lag Alert
 
-The Kafka consumer groups you are monitoring are currently showing problems. The following group is in a problem state:
-
-{{if or (ne 0 .Result.Status) (ne 5 .Result.Status)}}Cluster:  {{.Result.Cluster}}
+{{if (ne 0 .Result.Status)}}Cluster:  {{.Result.Cluster}}
 Group:    {{.Result.Group}}
-Status:   {{if eq 1 .Result.Status}}WARNING{{else if eq 2 .Result.Status}}ERROR{{end}}
+Status:   {{.Result.Status}}
 Time:     {{now.Format "2006-01-02 15:04:05 MST"}}
-Complete: {{.Result.Complete}}
-Errors:   {{len .Result.Partitions}} partitions have problems
-{{range .Result.Partitions}}          {{if eq 1 .Status}} WARN{{else if eq 2 .Status}}  ERR{{else if eq 3 .Status}} STOP{{else if eq 4 .Status}}STALL{{end}} {{.Topic}}:{{.Partition}} ({{(time .Start.Timestamp).Format "2006-01-02 15:04:05 MST"}}, {{.Start.Offset}}, {{.Start.Lag}}) -> ({{(time .End.Timestamp).Format "2006-01-02 15:04:05 MST"}}, {{.End.Offset}}, {{.End.Lag}})
+Errors:   {{len .Result.Partitions}} partitions reported
+{{range .Result.Partitions}}          {{.Status}} {{.Topic}}:{{.Partition}} lag:{{.Lag}} ({{(time .Start.Timestamp).Format "2006-01-02 15:04:05 MST"}}, offset:{{.Start.Offset}}, lag:{{.Start.Lag}}) -> ({{(time .End.Timestamp).Format "2006-01-02 15:04:05 MST"}}, offset:{{.End.Offset}}, lag:{{.End.Lag}})
 {{end}}{{end}}
 
