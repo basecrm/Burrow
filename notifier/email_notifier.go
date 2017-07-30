@@ -16,6 +16,7 @@ import (
 	log "github.com/cihub/seelog"
 	"net/smtp"
 	"text/template"
+	"time"
 )
 
 type EmailNotifier struct {
@@ -53,12 +54,17 @@ func (emailer *EmailNotifier) Notify(msg Message) error {
 	}
 
 	if emailer.template == nil {
-		template, err := template.ParseFiles(emailer.TemplateFile)
+		funcMap := template.FuncMap{
+			"time": func(millis int64) time.Time {
+				return time.Unix(0, millis*int64(time.Millisecond))
+			},
+		}
+		template, err := template.New("").Funcs(funcMap).ParseFiles(emailer.TemplateFile)
 		if err != nil {
 			log.Critical("Cannot parse email template: %v", err)
 			return err
 		}
-		emailer.template = template
+		emailer.template = template.Templates()[0]
 	}
 
 	clusterGroup := fmt.Sprintf("%s,%s", msg.Cluster, msg.Group)
