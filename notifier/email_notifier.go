@@ -15,6 +15,8 @@ import (
 	"fmt"
 	log "github.com/cihub/seelog"
 	"net/smtp"
+	"regexp"
+	"strings"
 	"text/template"
 	"time"
 )
@@ -71,7 +73,12 @@ func (emailer *EmailNotifier) Notify(msg Message) error {
 	clusterGroup := fmt.Sprintf("%s,%s", msg.Cluster, msg.Group)
 
 	for _, group := range emailer.Groups {
-		if group == clusterGroup {
+		pattern := regexp.QuoteMeta(group)
+		pattern = strings.Replace(pattern, `\*`, `.+`, -1)
+
+		if matched, err := regexp.MatchString(pattern, clusterGroup); err != nil {
+			log.Errorf("Error when mathcing consumer group pattern %s with group %s: %v", pattern, clusterGroup, err)
+		} else if matched {
 			return emailer.sendConsumerGroupStatusNotify(msg)
 		}
 	}
