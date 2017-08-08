@@ -27,6 +27,7 @@ type NotifyCenter struct {
 	app            *ApplicationContext
 	interval       int64
 	notifiers      []notifier.Notifier
+	exporters      []notifier.Exporter
 	refreshTicker  *time.Ticker
 	quitChan       chan struct{}
 	groupList      map[string]map[string]bool
@@ -54,15 +55,17 @@ func LoadNotifiers(app *ApplicationContext) error {
 		}
 	}
 
+	exporters := []notifier.Exporter{}
 	if app.Config.Statsd.Enable {
-		if statsdReporter, err := NewStatsdReporter(app); err == nil {
-			notifiers = append(notifiers, statsdReporter)
+		if statsdReporter, err := NewStatsdExporter(app); err == nil {
+			exporters = append(exporters, statsdReporter)
 		}
 	}
 
 	nc := &NotifyCenter{
 		app:            app,
 		notifiers:      notifiers,
+		exporters:      exporters,
 		interval:       app.Config.Notify.Interval,
 		quitChan:       make(chan struct{}),
 		groupList:      make(map[string]map[string]bool),
@@ -119,6 +122,22 @@ func StopNotifiers(app *ApplicationContext) {
 
 func (nc *NotifyCenter) handleEvaluationResponse(result *protocol.ConsumerGroupStatus) {
 	msg := notifier.Message(*result)
+
+	// Send all partitions to expoters
+	for _, exporter := range nc.exporters {
+		exporter.Export(msg)
+	}
+
+	// Remove OK partitions
+	partitions := []*protocol.PartitionStatus{}
+	for _, partition := range msg.Partitions {
+		if partition.Status > protocol.StatusOK {
+			partitions = append(partitions, partition)
+		}
+	}
+
+	// Send only paritions with problems to notifiers
+	msg.Partitions = partitions
 	for _, notifier := range nc.notifiers {
 		notifier.Notify(msg)
 	}
@@ -272,10 +291,10 @@ func NewSlackNotifier(app *ApplicationContext) (*notifier.SlackNotifier, error) 
 	}, nil
 }
 
-func NewStatsdReporter(app *ApplicationContext) (*notifier.StatsdReporter, error) {
+func NewStatsdExporter(app *ApplicationContext) (*notifier.StatsdExporter, error) {
 	log.Info("Start Stasd Lag Reporter")
 
-	return &notifier.StatsdReporter{
+	return &notifier.StatsdExporter{
 		Client:       app.Metrics,
 		LagThreshold: app.Config.Statsd.LagThreshold,
 	}, nil

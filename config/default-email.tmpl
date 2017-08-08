@@ -7,7 +7,7 @@ Group:    {{.Result.Group}}
 Status:   {{.Result.Status}}
 Time:     {{now.Format "2006-01-02 15:04:05 MST"}}
 
-{{len .Result.Partitions}} partitions reported:
+{{len .Result.Partitions}} partitions have problems
 
 {{range .Result.Partitions}}{{.Status}} {{.Topic}}:{{.Partition}} lag:{{.Lag}} ({{(time .Start.Timestamp).Format "2006-01-02 15:04:05 MST"}}, offset:{{.Start.Offset}}, lag:{{.Start.Lag}}) -> ({{(time .End.Timestamp).Format "2006-01-02 15:04:05 MST"}}, offset:{{.End.Offset}}, lag:{{.End.Lag}})
 {{end}}{{end}}
